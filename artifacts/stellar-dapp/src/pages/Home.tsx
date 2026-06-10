@@ -11,6 +11,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { RefreshCw, Wallet, Send, ExternalLink, AlertCircle, CheckCircle2 } from "lucide-react";
+import {
+  getHorizonErrorMessage,
+  normalizeXlmAmount,
+  validateSendAmount,
+} from "@/lib/stellar-errors";
 
 // The form schema
 const paymentSchema = z.object({
@@ -37,6 +42,7 @@ export default function Home() {
   const [txSuccess, setTxSuccess] = useState<{ hash: string } | null>(null);
   const [txError, setTxError] = useState<string | null>(null);
   const [installPrompt, setInstallPrompt] = useState(false);
+  const [networkWarning, setNetworkWarning] = useState<string | null>(null);
 
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentSchema),
@@ -64,6 +70,7 @@ export default function Home() {
         setIsConnected(true);
         setPublicKey(result.address);
         fetchBalance(result.address);
+        checkWalletNetwork();
       }
     } catch (e) {
       console.error(e);
@@ -94,6 +101,7 @@ export default function Home() {
       setIsConnected(true);
       setPublicKey(result.address);
       fetchBalance(result.address);
+      checkWalletNetwork();
     } catch (err) {
       console.error("Wallet connection failed", err);
     }
@@ -106,6 +114,21 @@ export default function Home() {
     form.reset();
     setTxSuccess(null);
     setTxError(null);
+    setNetworkWarning(null);
+  };
+
+  const checkWalletNetwork = async () => {
+    try {
+      const { network, error } = await freighter.getNetwork();
+      if (error) return;
+      if (network !== "TESTNET") {
+        setNetworkWarning("Freighter is not on Testnet. Open Freighter → Settings → Network → Testnet.");
+      } else {
+        setNetworkWarning(null);
+      }
+    } catch {
+      // ignore — wallet may not be authorized yet
+    }
   };
 
   const fetchBalance = async (address: string) => {
@@ -131,13 +154,31 @@ export default function Home() {
     setTxError(null);
     
     try {
-      if (balance && Number(values.amount) > Number(balance)) {
-        throw new Error("Amount exceeds available XLM balance");
+      const amount = normalizeXlmAmount(values.amount);
+      validateSendAmount(amount, balance);
+
+      const { network, error: networkError } = await freighter.getNetwork();
+      if (networkError) {
+        throw new Error("Could not read Freighter network. Reconnect your wallet.");
+      }
+      if (network !== "TESTNET") {
+        throw new Error("Switch Freighter to Testnet in wallet settings before sending.");
       }
 
       const server = new Horizon.Server("https://horizon-testnet.stellar.org");
+
+      try {
+        await server.loadAccount(values.recipient);
+      } catch {
+        if (Number(amount) < 1) {
+          throw new Error(
+            "Recipient account does not exist on testnet. Send at least 1 XLM to create it."
+          );
+        }
+      }
+
       const sourceAccount = await server.loadAccount(publicKey);
-      
+
       const transaction = new TransactionBuilder(sourceAccount, {
         fee: BASE_FEE,
         networkPassphrase: Networks.TESTNET,
@@ -146,7 +187,7 @@ export default function Home() {
           Operation.payment({
             destination: values.recipient,
             asset: Asset.native(),
-            amount: values.amount,
+            amount,
           })
         )
         .setTimeout(30)
@@ -154,6 +195,7 @@ export default function Home() {
 
       const signResult = await freighter.signTransaction(transaction.toXDR(), {
         networkPassphrase: Networks.TESTNET,
+        address: publicKey,
       });
       if (signResult.error) {
         throw new Error(
@@ -169,9 +211,13 @@ export default function Home() {
       setTxSuccess({ hash: result.hash });
       fetchBalance(publicKey);
       form.reset();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Transaction error", err);
-      setTxError(err?.message || "Transaction failed");
+      const message =
+        err instanceof Error && !/status code 400/i.test(err.message)
+          ? err.message
+          : getHorizonErrorMessage(err);
+      setTxError(message);
     } finally {
       setTxPending(false);
     }
@@ -208,6 +254,14 @@ export default function Home() {
             <AlertDescription>
               Please install the <a href="https://www.freighter.app" target="_blank" rel="noreferrer" className="underline font-medium hover:text-primary transition-colors">Freighter extension</a> to use this dApp.
             </AlertDescription>
+          </Alert>
+        )}
+
+        {networkWarning && (
+          <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Wrong network</AlertTitle>
+            <AlertDescription>{networkWarning}</AlertDescription>
           </Alert>
         )}
 
