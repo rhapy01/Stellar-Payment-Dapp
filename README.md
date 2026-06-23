@@ -6,6 +6,12 @@ A beginner-friendly Stellar payment dApp for **White Belt Level 1**. Connect you
 
 **Repository:** [https://github.com/rhapy01/Stellar-Payment-Dapp](https://github.com/rhapy01/Stellar-Payment-Dapp)
 
+> **Source code location:** All application source files are under [`artifacts/stellar-dapp/src/`](./artifacts/stellar-dapp/src/).
+> - Main UI with wallet integration: [`artifacts/stellar-dapp/src/pages/Home.tsx`](./artifacts/stellar-dapp/src/pages/Home.tsx)
+> - App entry point: [`artifacts/stellar-dapp/src/App.tsx`](./artifacts/stellar-dapp/src/App.tsx)
+> - Stellar error helpers: [`artifacts/stellar-dapp/src/lib/stellar-errors.ts`](./artifacts/stellar-dapp/src/lib/stellar-errors.ts)
+> - Dependencies: [`artifacts/stellar-dapp/package.json`](./artifacts/stellar-dapp/package.json) — uses `@stellar/freighter-api` v6 and `@stellar/stellar-sdk` v15
+
 ## Features
 
 - **Wallet connection** — Connect and disconnect Freighter with clear connection status
@@ -69,22 +75,44 @@ Add screenshots to `docs/screenshots/` before submitting (wallet connected, bala
 | --- | --- | --- |
 | ![Wallet connected](docs/screenshots/wallet-connected.png) | ![Balance displayed](docs/screenshots/balance-displayed.png) | ![Successful transaction](docs/screenshots/transaction-success.png) |
 
+## Wallet Integration
+
+All wallet logic lives in [`artifacts/stellar-dapp/src/pages/Home.tsx`](./artifacts/stellar-dapp/src/pages/Home.tsx):
+
+```ts
+import freighter from "@stellar/freighter-api";
+import { Horizon, TransactionBuilder, Networks, Asset, Operation, BASE_FEE } from "@stellar/stellar-sdk";
+```
+
+Key integration points:
+
+| Feature | API call | Location |
+|---|---|---|
+| Detect Freighter installed | `freighter.isConnected()` | `checkConnection()` |
+| Request wallet access / connect | `freighter.requestAccess()` | `connectWallet()` |
+| Get connected public key | `freighter.getAddress()` | `checkConnection()` |
+| Check active network | `freighter.getNetwork()` | `checkWalletNetwork()` |
+| Fetch XLM balance | `Horizon.Server.loadAccount()` | `fetchBalance()` |
+| Sign transaction | `freighter.signTransaction(xdr, { networkPassphrase })` | `onSubmit()` |
+| Submit transaction | `server.submitTransaction(signedTx)` | `onSubmit()` |
+
 ## Tech Stack
 
 - React + TypeScript + Vite
-- [@stellar/freighter-api](https://www.npmjs.com/package/@stellar/freighter-api) — wallet integration
-- [@stellar/stellar-sdk](https://www.npmjs.com/package/@stellar/stellar-sdk) — Horizon API and transaction building
+- [`@stellar/freighter-api`](https://www.npmjs.com/package/@stellar/freighter-api) v6 — Freighter wallet integration
+- [`@stellar/stellar-sdk`](https://www.npmjs.com/package/@stellar/stellar-sdk) v15 — Horizon API and transaction building
 - Tailwind CSS + shadcn/ui components
 
 ## Project Structure
 
 ```
-artifacts/stellar-dapp/
+artifacts/stellar-dapp/        ← React app root
 ├── src/
-│   ├── pages/Home.tsx      # Main dApp UI (wallet, balance, payments)
-│   ├── App.tsx             # Router and providers
-│   └── components/ui/      # UI components
-└── package.json
+│   ├── pages/Home.tsx         ← Main dApp UI: wallet connect, balance, send payment
+│   ├── App.tsx                ← Router and providers
+│   ├── lib/stellar-errors.ts  ← Horizon error code mapping
+│   └── components/ui/         ← shadcn/ui components
+└── package.json               ← @stellar/freighter-api, @stellar/stellar-sdk
 ```
 
 ## License
