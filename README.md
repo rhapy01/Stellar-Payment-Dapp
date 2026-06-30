@@ -6,11 +6,13 @@ A React dApp that connects to the [Freighter](https://www.freighter.app/) wallet
 
 ## Live Deployment
 
-**URL:** https://stellar-payment-dapp.vercel.app
+**🚀 Deployed App (Testnet):** https://stellar-payment-dapp.vercel.app
 
 **Network:** Stellar Testnet (`https://horizon-testnet.stellar.org`)
 
 > ⚠️ **Note on White Belt Level 1 requirements:** According to the official White Belt criteria, this level requires wallet setup, wallet connect/disconnect, XLM balance display, and sending an XLM transaction on testnet. **Smart contract deployment is NOT a requirement for White Belt Level 1.** This dApp fully satisfies all stated requirements.
+>
+> Stellar native XLM payments use the **built-in `Payment` operation** on the Stellar network — no custom smart contract is needed or expected. See the [`contracts/`](./contracts/README.md) folder for details.
 
 ### Testnet Transaction Proof
 
@@ -18,7 +20,7 @@ A real XLM payment was submitted through this app on Stellar Testnet:
 
 **Transaction hash:** `af0786bbc88de5d466a7ca2b3e96d6d1f5938f817361a88237ef5927f388f1a6`
 
-**Explorer link:** https://stellar.expert/explorer/testnet/tx/af0786bbc88de5d466a7ca2b3e96d6d1f5938f817361a88237ef5927f388f1a6
+**🔗 Explorer link:** https://stellar.expert/explorer/testnet/tx/af0786bbc88de5d466a7ca2b3e96d6d1f5938f817361a88237ef5927f388f1a6
 
 The screenshot below shows the success state in the app UI after this transaction was confirmed:
 
